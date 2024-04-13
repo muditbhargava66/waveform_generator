@@ -1,12 +1,12 @@
 # Waveform Generator
 
-The Waveform Generator is a digital system that generates various waveforms, including sine, sawtooth, triangle, and square waves. It is controlled through an AXI4-Lite interface and supports two output channels (A and B) with configurable parameters.
+The Waveform Generator is a digital system that generates various waveforms, including sine, sawtooth, triangle, square, and arbitrary waves. It is controlled through an AXI4-Lite interface and supports two output channels (A and B) with configurable parameters.
 
 ## Features
-- Generates sine, sawtooth, triangle, and square waves
+- Generates sine, sawtooth, triangle, square, and arbitrary waves
 - Two independent output channels (A and B)
 - Configurable waveform parameters:
-  - Mode (DC, Sine, Sawtooth, Triangle, Square)
+  - Mode (DC, Sine, Sawtooth, Triangle, Square, Arbitrary)
   - Frequency
   - Amplitude
   - Offset
@@ -16,6 +16,8 @@ The Waveform Generator is a digital system that generates various waveforms, inc
 - AXI4-Lite interface for configuration and control
 - Look-up table (LUT) for efficient sine wave generation
 - Voltage-to-DAC word calibration for accurate output voltages
+- Arbitrary waveform generation with customizable depth and data
+- High-level software library for easier integration
 
 ## Directory Structure
 ```
@@ -42,19 +44,22 @@ waveform_generator/
 │   │   ├── wavegen_ip.h
 │   │   ├── wavegen_regs.h
 │   │   └── Makefile
-│   └── scripts/
-│       └── coe.py
-|── docs/
-|    ├── user_manual.md
-|    ├── api_reference.md
-|    ├── integration_guide.md
+│   ├── scripts/
+│   │   └── coe.py
+│   └── lib/
+│       ├── wavegen_lib.h
+│       └── wavegen_lib.c
+│── docs/
+│    ├── user_manual.md
+│    ├── api_reference.md
+│    ├── integration_guide.md
 └── README.md
 ```
 
 ## Getting Started
 1. Clone the repository:
    ```
-   git clone https://github.com/your-username/waveform-generator.git
+   git clone https://github.com/muditbhargava66/waveform_generator.git
    ```
 2. Set up the hardware:
    - Connect the FPGA board to your system
@@ -67,9 +72,10 @@ waveform_generator/
    - Navigate to the `software/driver` directory
    - Run `make` to build the driver
    - Load the driver using `insmod wavegen_driver.ko`
-5. Configure and control the Waveform Generator:
-   - Use the provided API functions and data structures to configure the waveform parameters
-   - Refer to the API reference and integration guide for detailed instructions
+5. Use the high-level software library:
+   - Include the `wavegen_lib.h` header file in your application
+   - Link against the `wavegen_lib.c` file during compilation
+   - Use the provided functions to configure and control the Waveform Generator
 
 ## Documentation
 - [User Manual](docs/user_manual.md)
@@ -77,11 +83,11 @@ waveform_generator/
 - [Integration Guide](docs/integration_guide.md)
 
 ## Future Updates
+- [x] Improve the sine LUT generation script for better accuracy
 - [x] Add support for arbitrary waveform generation
 - [ ] Implement dynamic reconfiguration of waveform parameters
 - [ ] Enhance the driver with real-time waveform updates and triggers
-- [x] Improve the sine LUT generation script for better accuracy
-- [ ] Develop a high-level software library for easier integration
+- [x] Develop a high-level software library for easier integration
 - [ ] Optimize the HDL code for resource utilization and performance
 
 ## Contributing
