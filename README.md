@@ -80,7 +80,7 @@ waveform_generator/
 - [ ] Add support for arbitrary waveform generation
 - [ ] Implement dynamic reconfiguration of waveform parameters
 - [ ] Enhance the driver with real-time waveform updates and triggers
-- [ ] Improve the sine LUT generation script for better accuracy
+- [x] Improve the sine LUT generation script for better accuracy
 - [ ] Develop a high-level software library for easier integration
 - [ ] Optimize the HDL code for resource utilization and performance
 

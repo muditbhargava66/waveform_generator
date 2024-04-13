@@ -1,24 +1,29 @@
 import math
 
-# Variables
-outfile = "sin_LUT.coe"
-lut_width = 16
-num_divisions = 512
-stop_point = math.pi/2
+def sine_function(x):
+    return math.sin(x)
 
-lut_width_hex = math.ceil(lut_width/4)
-bit_mask = (1 << lut_width) - 1
-delta = stop_point/num_divisions
+def generate_sine_lut(num_samples, amplitude, num_bits):
+    max_value = 2 ** (num_bits - 1) - 1
+    phase_step = 2 * math.pi / num_samples
+    
+    with open("sin_LUT.coe", "w") as file:
+        file.write("memory_initialization_radix=10;\n")
+        file.write("memory_initialization_vector=\n")
+        
+        for i in range(num_samples):
+            phase = i * phase_step
+            sine_value = sine_function(phase)
+            quantized_value = int(round(sine_value * max_value))
+            
+            if i == num_samples - 1:
+                file.write(f"{quantized_value};\n")
+            else:
+                file.write(f"{quantized_value},\n")
 
-with open(outfile, "w") as f:
-    f.write("memory_initialization_radix=16;\n")
-    f.write("memory_initialization_vector=\n")
+# Configuration parameters
+num_samples = 1024
+amplitude = 1.0
+num_bits = 16
 
-    for i in range(num_divisions):
-        sin_value = math.sin(i*delta)
-        value = round(sin_value*(2**(lut_width-1) - 1))
-
-        delim = "" if i == num_divisions-1 else ","
-        f.write("{0:0{1}X}{2}\n".format(value & bit_mask, lut_width_hex, delim))
-
-    f.write(";\n")
+generate_sine_lut(num_samples, amplitude, num_bits)
