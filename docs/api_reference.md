@@ -16,6 +16,8 @@ The following IOCTL commands are available for configuring and controlling the W
 | `WAVEGEN_IOCTL_SET_PHASE_OFFSET`| Set the phase offset for a specific channel     |
 | `WAVEGEN_IOCTL_SET_CYCLES`   | Set the number of cycles for a specific channel    |
 | `WAVEGEN_IOCTL_ENABLE`       | Enable or disable waveform generation for each channel |
+| `WAVEGEN_IOCTL_SET_ARB_WAVEFORM_DEPTH` | Set the arbitrary waveform depth                   |
+| `WAVEGEN_IOCTL_SET_ARB_WAVEFORM_DATA`  | Set the arbitrary waveform data at a given offset  |
 
 ## Data Structures
 The following data structures are used for configuring the Waveform Generator:
@@ -100,6 +102,24 @@ struct wavegen_enable {
 - `channel_a`: Enable (1) or disable (0) waveform generation for channel A
 - `channel_b`: Enable (1) or disable (0) waveform generation for channel B
 
+### `struct wavegen_arb_waveform_depth`
+```c
+struct wavegen_arb_waveform_depth {
+    unsigned int depth;
+};
+```
+- `depth`: Depth of the arbitrary waveform
+
+### `struct wavegen_arb_waveform_data`
+```c
+struct wavegen_arb_waveform_data {
+    unsigned int offset;
+    unsigned int value;
+};
+```
+- `offset`: Offset of the arbitrary waveform data point
+- `value`: Value of the arbitrary waveform data poin
+
 ## Waveform Modes
 The following waveform modes are available:
 
@@ -110,6 +130,7 @@ The following waveform modes are available:
 | 2          | Sawtooth      |
 | 3          | Triangle      |
 | 4          | Square        |
+| 5          | Arbitrary     |
 
 ## Example Usage
 Here's an example of how to use the IOCTL commands to configure and control the Waveform Generator:

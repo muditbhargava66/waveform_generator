@@ -22,6 +22,8 @@ This guide provides instructions on how to integrate the Waveform Generator IP c
    - Use `WAVEGEN_IOCTL_SET_PHASE_OFFSET` to set the phase offset for a specific channel.
    - Use `WAVEGEN_IOCTL_SET_CYCLES` to set the number of cycles for a specific channel (0 for continuous operation).
    - Use `WAVEGEN_IOCTL_ENABLE` to enable or disable waveform generation for each channel.
+   - Use the `WAVEGEN_IOCTL_SET_ARB_WAVEFORM_DEPTH` IOCTL command to set the arbitrary waveform depth.
+   - Use the `WAVEGEN_IOCTL_SET_ARB_WAVEFORM_DATA` IOCTL command to load the arbitrary waveform data, providing the offset and value for each data point.
 4. Close the device file using the `close` system call when done.
 
 ## Driver Integration

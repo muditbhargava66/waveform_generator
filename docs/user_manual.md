@@ -17,6 +17,7 @@ The Waveform Generator is a digital system that generates various waveforms, inc
 - AXI4-Lite interface for configuration and control
 - Look-up table (LUT) for efficient sine wave generation
 - Voltage-to-DAC word calibration for accurate output voltages
+- Arbitrary waveform generation with customizable depth and data
 
 ## Hardware Requirements
 - FPGA board with sufficient resources (e.g., Xilinx Zynq)
@@ -46,6 +47,15 @@ The waveform generator is configured through the AXI4-Lite interface. The follow
 - Duty Cycle (0x18): Set the duty cycle for square wave (in units of 100%/2^16)
 - Cycles (0x1C): Set the number of cycles for each channel
 - Phase Offset (0x20): Set the phase offset for each channel (in units of 0.01 degrees, range: -180 to 180)
+
+### Arbitrary Waveform Generation
+The Waveform Generator supports arbitrary waveform generation, allowing you to generate custom waveforms by providing the waveform depth and data.
+
+To configure arbitrary waveform generation:
+1. Set the arbitrary waveform depth using the `WAVEGEN_IOCTL_SET_ARB_WAVEFORM_DEPTH` IOCTL command.
+2. Load the arbitrary waveform data using the `WAVEGEN_IOCTL_SET_ARB_WAVEFORM_DATA` IOCTL command. You need to provide the offset and value for each data point.
+3. Set the waveform mode to `ARB` using the `WAVEGEN_IOCTL_SET_MODE` IOCTL command.
+4. Enable the waveform generation using the `WAVEGEN_IOCTL_ENABLE` IOCTL command.
 
 Refer to the API reference documentation for more details on how to access and modify these registers.
 

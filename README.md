@@ -77,7 +77,7 @@ waveform_generator/
 - [Integration Guide](docs/integration_guide.md)
 
 ## Future Updates
-- [ ] Add support for arbitrary waveform generation
+- [x] Add support for arbitrary waveform generation
 - [ ] Implement dynamic reconfiguration of waveform parameters
 - [ ] Enhance the driver with real-time waveform updates and triggers
 - [x] Improve the sine LUT generation script for better accuracy

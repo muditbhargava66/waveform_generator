@@ -1,7 +1,8 @@
 `timescale 1ns / 1ps
 
 module WaveForms #(
-    parameter int SAMPLING_FREQUENCY = 50000
+    parameter int SAMPLING_FREQUENCY = 50000,
+    parameter int ARB_WAVEFORM_DEPTH = 1024
 )(
     input logic clk,
     input logic lut_clk,
@@ -17,10 +18,11 @@ module WaveForms #(
     input logic signed [15:0] phase_offs_b,
     input logic [15:0] cycles_a,
     input logic [15:0] cycles_b,
+    input logic [15:0] arb_waveform_data[0:ARB_WAVEFORM_DEPTH-1],
     output logic signed [15:0] wave_a,
     output logic signed [15:0] wave_b
 );
-    localparam DC = 4'd0, SINE = 4'd1, SAWTOOTH = 4'd2, TRIANGLE = 4'd3, SQUARE = 4'd4;
+    localparam DC = 4'd0, SINE = 4'd1, SAWTOOTH = 4'd2, TRIANGLE = 4'd3, SQUARE = 4'd4, ARB = 4'd5;
     localparam ONE_VOLT = 2**15 - 1;
     
     logic [31:0] phase_a = 0;
@@ -84,6 +86,7 @@ module WaveForms #(
                         wave_a <= -ONE_VOLT;
                     else 
                         wave_a <= ONE_VOLT;
+                ARB: wave_a <= arb_waveform_data[phase_a[31:20]]; // Use top 12 bits of phase as address
             endcase
             phase_a <= phase_a + delta_phase_a;
         end else begin
@@ -126,6 +129,7 @@ module WaveForms #(
                         wave_b <= -ONE_VOLT;
                     else 
                         wave_b <= ONE_VOLT;
+                ARB: wave_b <= arb_waveform_data[phase_b[31:20]]; // Use top 12 bits of phase as address
             endcase
             phase_b <= phase_b + delta_phase_b;
         end else begin

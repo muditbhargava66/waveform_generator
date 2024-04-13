@@ -12,7 +12,8 @@
 
 module wavegen_v1_0_S00_AXI #(
     parameter integer C_S_AXI_ADDR_WIDTH = 6,
-    parameter integer SAMPLING_FREQUENCY = 50000
+    parameter integer SAMPLING_FREQUENCY = 50000,
+    parameter integer ARB_WAVEFORM_DEPTH = 1024
 )(
     // Ports to top level module (what makes this the Wavegen IP module)
     input sample_clk,
@@ -59,6 +60,8 @@ module wavegen_v1_0_S00_AXI #(
     reg [15:0] dtcyc_a, dtcyc_b;
     reg [15:0] cycles_a, cycles_b;
     reg [15:0] phase_off_a, phase_off_b;
+    reg [31:0] arb_waveform_depth;
+    reg [15:0] arb_waveform_data[0:ARB_WAVEFORM_DEPTH-1];
     
     wire signed [15:0] wave_a_value;
     wire signed [15:0] wave_b_value;
@@ -71,7 +74,8 @@ module wavegen_v1_0_S00_AXI #(
     
     // Wave instantiations  
     WaveForms #(
-        .SAMPLING_FREQUENCY(SAMPLING_FREQUENCY)
+        .SAMPLING_FREQUENCY(SAMPLING_FREQUENCY),
+        .ARB_WAVEFORM_DEPTH(ARB_WAVEFORM_DEPTH)
     ) waves (
         .clk(sample_clk),
         .lut_clk(lut_clk),
@@ -87,6 +91,7 @@ module wavegen_v1_0_S00_AXI #(
         .phase_offs_b(phase_off_b),
         .cycles_a(cycles_a),
         .cycles_b(cycles_b),
+        .arb_waveform_data(arb_waveform_data),
         .wave_a(wave_a_value),
         .wave_b(wave_b_value)
     );
@@ -102,6 +107,8 @@ module wavegen_v1_0_S00_AXI #(
     //  24  dtcyc (r/w) units of 100%/2**16
     //  28  cycles (r/w) units of 1 cycle
     //  32  phase_off (r/w) units of 0.01 degrees (-180 to 180)
+    //  36  arb_waveform_depth (r/w) units of 1 sample
+    //  40  arb_waveform_data (r/w) arbitrary waveform data
     
     // Register numbers
     localparam integer MODE_REG       = 4'b0000;
@@ -113,6 +120,8 @@ module wavegen_v1_0_S00_AXI #(
     localparam integer DTCYC_REG      = 4'b0110;
     localparam integer CYCLES_REG     = 4'b0111;
     localparam integer PHASE_OFF_REG  = 4'b1000;
+    localparam integer ARB_DEPTH_REG  = 4'b1001;
+    localparam integer ARB_DATA_REG   = 4'b1010;
     
     // AXI4-lite signals
     reg axi_awready;
@@ -223,6 +232,7 @@ module wavegen_v1_0_S00_AXI #(
             cycles_b <= 16'b0;
             phase_off_a <= 16'b0;
             phase_off_b <= 16'b0;
+            arb_waveform_depth <= 32'b0;
         end else begin
             if (wr) begin
                 case (waddr[5:2])
@@ -269,27 +279,33 @@ module wavegen_v1_0_S00_AXI #(
                         for (byte_index = 2; byte_index <= 3; byte_index = byte_index + 1)
                             if (axi_wstrb[byte_index] == 1)
                                 dtcyc_b[((byte_index - 2) * 8) +: 8] <= s_axi_wdata[(byte_index * 8) +: 8];
-                    end
+                    end 
                     CYCLES_REG:
                     begin
                         for (byte_index = 0; byte_index <= 1; byte_index = byte_index + 1)
-                            if (axi_wstrb[byte_index] == 1) 
+                            if (axi_wstrb[byte_index] == 1)
                                 cycles_a[(byte_index * 8) +: 8] <= s_axi_wdata[(byte_index * 8) +: 8];
-                                
+                        
                         for (byte_index = 2; byte_index <= 3; byte_index = byte_index + 1)
                             if (axi_wstrb[byte_index] == 1)
                                 cycles_b[((byte_index - 2) * 8) +: 8] <= s_axi_wdata[(byte_index * 8) +: 8];
-                    end
+                    end                    
                     PHASE_OFF_REG:
                     begin
                         for (byte_index = 0; byte_index <= 1; byte_index = byte_index + 1)
-                            if (axi_wstrb[byte_index] == 1)
+                            if (axi_wstrb[byte_index] == 1) 
                                 phase_off_a[(byte_index * 8) +: 8] <= s_axi_wdata[(byte_index * 8) +: 8];
-
+                                
                         for (byte_index = 2; byte_index <= 3; byte_index = byte_index + 1)
                             if (axi_wstrb[byte_index] == 1)
                                 phase_off_b[((byte_index - 2) * 8) +: 8] <= s_axi_wdata[(byte_index * 8) +: 8];
                     end
+                    ARB_DEPTH_REG:
+                        for (byte_index = 0; byte_index <= 3; byte_index = byte_index + 1)
+                            if (axi_wstrb[byte_index] == 1)
+                                arb_waveform_depth[(byte_index * 8) +: 8] <= s_axi_wdata[(byte_index * 8) +: 8];
+                    ARB_DATA_REG:
+                        arb_waveform_data[waddr[11:2]] <= s_axi_wdata[15:0];
                 endcase
             end
         end
@@ -366,6 +382,10 @@ module wavegen_v1_0_S00_AXI #(
                         axi_rdata <= {cycles_b, cycles_a};
                     PHASE_OFF_REG:
                         axi_rdata <= {phase_off_b, phase_off_a};
+                    ARB_DEPTH_REG:
+                        axi_rdata <= arb_waveform_depth;
+                    ARB_DATA_REG:
+                        axi_rdata <= {16'b0, arb_waveform_data[raddr[11:2]]};
                 endcase
             end   
         end
