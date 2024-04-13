@@ -50,3 +50,99 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+# Vivado project files
+*.cache/
+*.hw/
+*.ip_user_files/
+*.runs/
+*.sim/
+*.xpr
+*.log
+*.jou
+*.str
+*.zip
+*.tmp
+*.os
+*.js
+*.pb
+*.dcp
+*.vdi
+*.vho
+*.wdf
+*.veo
+fsm_encoding.os
+tab_*/
+webtalk/
+hs_err_pid*
+xelab.*
+xsim.*
+xvlog.*
+*.backup.*
+*.debug
+
+# Waveform dumps
+*.vcd
+*.saif
+*.tcf
+
+# COE files
+*.coe
+
+# Bitstream files
+*.bit
+*.bin
+*.mcs
+
+# Software build artifacts
+software/driver/*.o
+software/driver/*.ko
+software/driver/*.mod*
+software/driver/*.cmd
+software/driver/.tmp_versions/
+software/driver/modules.order
+software/driver/Module.symvers
+software/driver/wavegen_driver.mod.c
+
+# Python cache files
+__pycache__/
+*.pyc
+
+# Documentation build artifacts
+docs/_build/
+docs/_static/
+docs/_templates/
+
+# Editor and IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.bak
+*.tmp
+*.log
+*.synctex.gz
+*.synctex.gz(busy)
+*.pdfsync
+*.fdb_latexmk
+*.fls
+*.out
+*.toc
+*.aux
+*.lof
+*.lot
+*.fmt
+*.fot
+*.cb
+*.cb2
+*.lb
+*.bcf
+*.run.xml
+auto/
+*.el
+
+# Miscellaneous
+*.swp
+.DS_Store
+Thumbs.db
