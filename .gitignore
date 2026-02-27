@@ -34,7 +34,6 @@
 *.app
 *.i*86
 *.x86_64
-*.hex
 
 # Debug files
 *.dSYM/
@@ -78,6 +77,8 @@ hs_err_pid*
 xelab.*
 xsim.*
 xvlog.*
+xsim.dir/
+*.wdb
 *.backup.*
 *.debug
 
@@ -85,9 +86,6 @@ xvlog.*
 *.vcd
 *.saif
 *.tcf
-
-# COE files
-*.coe
 
 # Bitstream files
 *.bit
@@ -102,7 +100,7 @@ software/driver/*.cmd
 software/driver/.tmp_versions/
 software/driver/modules.order
 software/driver/Module.symvers
-software/driver/wavegen_driver.mod.c
+software/driver/wavegen.mod.c
 
 # Python cache files
 __pycache__/
@@ -120,29 +118,7 @@ docs/_templates/
 *.swo
 *~
 *.bak
-*.tmp
-*.log
-*.synctex.gz
-*.synctex.gz(busy)
-*.pdfsync
-*.fdb_latexmk
-*.fls
-*.out
-*.toc
-*.aux
-*.lof
-*.lot
-*.fmt
-*.fot
-*.cb
-*.cb2
-*.lb
-*.bcf
-*.run.xml
-auto/
-*.el
 
 # Miscellaneous
-*.swp
 .DS_Store
 Thumbs.db

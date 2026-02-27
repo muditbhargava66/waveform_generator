@@ -1,88 +1,101 @@
-# Waveform Generator User Manual
+# User Manual — Waveform Generator IP
 
-## Introduction
-The Waveform Generator is a digital system that generates various waveforms, including sine, sawtooth, triangle, and square waves. It is controlled through an AXI4-Lite interface and supports two output channels (A and B) with configurable parameters.
+## Overview
 
-## Features
-- Generates sine, sawtooth, triangle, and square waves
-- Two independent output channels (A and B)
-- Configurable waveform parameters:
-  - Mode (DC, Sine, Sawtooth, Triangle, Square)
-  - Frequency
-  - Amplitude
-  - Offset
-  - Duty cycle (for square wave)
-  - Phase offset
-  - Number of cycles
-- AXI4-Lite interface for configuration and control
-- Look-up table (LUT) for efficient sine wave generation
-- Voltage-to-DAC word calibration for accurate output voltages
-- Arbitrary waveform generation with customizable depth and data
+The Waveform Generator is a dual-channel, AXI4-Lite controlled IP core for generating standard waveforms including DC, sine, sawtooth, triangle, square, and arbitrary waveforms. It targets Xilinx Zynq-7000 SoC platforms and interfaces with external DACs via SPI.
 
-## Hardware Requirements
-- FPGA board with sufficient resources (e.g., Xilinx Zynq)
-- DAC chip compatible with the DAC controller interface
-- Appropriate power supplies and connections
+## Architecture
 
-## Software Requirements
-- Vivado Design Suite for FPGA development
-- Xilinx SDK for software development
-- Python 3.x for running the COE file generation script
+```
+  Zynq PS ──► AXI4-Lite ──► wavegen_v1_0_S00_AXI (shadow + active registers)
+                                    │
+                                    ▼
+                              WaveForms (phase accumulator engine)
+                              ├── SineWaves (quarter-wave LUT synthesis)
+                              └── arb_waveform_data (BRAM)
+                                    │
+                                    ▼
+                        voltsToDACWords (calibration, fixed-point)
+                                    │
+                                    ▼
+                          DAC_Controller (SPI master)
+                                    │
+                                    ▼
+                            External DAC (e.g., MCP4922)
+```
 
-## Getting Started
-1. Clone the waveform generator repository from GitHub.
-2. Open the Vivado project and build the FPGA bitstream.
-3. Export the hardware design to Xilinx SDK.
-4. Develop the software application to configure and control the waveform generator using the provided driver and APIs.
-5. Program the FPGA with the bitstream and run the software application.
+## Waveform Modes
 
-## Configuring the Waveform Generator
-The waveform generator is configured through the AXI4-Lite interface. The following registers are available for configuration:
+| Mode ID | Name     | Description                                |
+| ------- | -------- | ------------------------------------------ |
+| 0       | DC       | Constant zero output                       |
+| 1       | Sine     | Sine wave via quarter-wave LUT             |
+| 2       | Sawtooth | Linear ramp from -32767 to +32767          |
+| 3       | Triangle | Symmetric triangle wave                    |
+| 4       | Square   | Square wave with configurable duty cycle   |
+| 5       | ARB      | Arbitrary waveform from user-loaded memory |
 
-- Mode (0x00): Select the waveform mode for each channel (A and B)
-- Run (0x04): Enable/disable waveform generation for each channel
-- Frequency (0x08, 0x0C): Set the frequency for each channel (in units of 100 μHz)
-- Offset (0x10): Set the DC offset for each channel (in units of 100 μV)
-- Amplitude (0x14): Set the amplitude for each channel (in units of 100 μV)
-- Duty Cycle (0x18): Set the duty cycle for square wave (in units of 100%/2^16)
-- Cycles (0x1C): Set the number of cycles for each channel
-- Phase Offset (0x20): Set the phase offset for each channel (in units of 0.01 degrees, range: -180 to 180)
+## Register Map
 
-### Arbitrary Waveform Generation
-The Waveform Generator supports arbitrary waveform generation, allowing you to generate custom waveforms by providing the waveform depth and data.
+All registers are 32-bit, word-aligned at the IP base address.
 
-To configure arbitrary waveform generation:
-1. Set the arbitrary waveform depth using the `WAVEGEN_IOCTL_SET_ARB_WAVEFORM_DEPTH` IOCTL command.
-2. Load the arbitrary waveform data using the `WAVEGEN_IOCTL_SET_ARB_WAVEFORM_DATA` IOCTL command. You need to provide the offset and value for each data point.
-3. Set the waveform mode to `ARB` using the `WAVEGEN_IOCTL_SET_MODE` IOCTL command.
-4. Enable the waveform generation using the `WAVEGEN_IOCTL_ENABLE` IOCTL command.
+| Offset | Name      | Access | Description                                                 |
+| ------ | --------- | ------ | ----------------------------------------------------------- |
+| 0x00   | MODE      | R/W    | `[6:4]`=mode_b, `[2:0]`=mode_a                              |
+| 0x04   | RUN       | R/W    | `[1]`=enable_b, `[0]`=enable_a (immediate)                  |
+| 0x08   | FREQ_A    | R/W    | Channel A frequency (100μHz units)                          |
+| 0x0C   | FREQ_B    | R/W    | Channel B frequency (100μHz units)                          |
+| 0x10   | OFFSET    | R/W    | `[31:16]`=offset_b, `[15:0]`=offset_a                       |
+| 0x14   | AMPLTD    | R/W    | `[31:16]`=amp_b, `[15:0]`=amp_a                             |
+| 0x18   | DTCYC     | R/W    | `[31:16]`=duty_b, `[15:0]`=duty_a                           |
+| 0x1C   | CYCLES    | R/W    | `[31:16]`=cycles_b, `[15:0]`=cycles_a                       |
+| 0x20   | PHASE_OFF | R/W    | `[31:16]`=phase_b, `[15:0]`=phase_a                         |
+| 0x24   | ARB_DEPTH | R/W    | Arbitrary waveform sample count                             |
+| 0x28+n | ARB_DATA  | R/W    | Arbitrary waveform sample `n`                               |
+| 0x2C   | RECONFIG  | W      | Write any value → apply shadow registers                    |
+| 0x30   | STATUS    | R      | `[3]`=ch_b_run, `[2]`=ch_a_run, `[1]`=reconfig, `[0]`=ready |
+| 0x34   | TRIGGER   | W      | `[1]`=trigger_b, `[0]`=trigger_a                            |
+| 0x38   | SOFT_RST  | W      | `[1]`=reset_b, `[0]`=reset_a                                |
 
-Refer to the API reference documentation for more details on how to access and modify these registers.
+## Shadow Register System
 
-## Generating the Sine LUT
-The waveform generator uses a look-up table (LUT) to store pre-calculated sine values for efficient sine wave generation. To generate the LUT:
+Most registers are **shadow registers**: writes go to a shadow copy that is NOT immediately applied to the waveform engine. To apply all pending changes atomically (glitch-free), write any value to the **RECONFIG** register (0x2C).
 
-1. Open the `scripts/coe.py` file.
-2. Modify the `lut_width`, `num_divisions`, and `stop_point` variables as needed.
-3. Run the script to generate the `sin_LUT.coe` file.
-4. Update the FPGA project with the generated COE file.
+**Exception**: The RUN register (0x04) is applied immediately for fast enable/disable.
 
-## Calibrating the Output Voltages
-The waveform generator includes voltage-to-DAC word calibration modules (`voltsToDACWords`) to ensure accurate output voltages. To calibrate the outputs:
+## Frequency Calculation
 
-1. Measure the output voltages for a known set of input values (e.g., 0V and 2.5V).
-2. Update the `DAC_TWOPOINTFIVE` and `DAC_ZERO` parameters in the `voltsToDACWords` modules according to the measured values.
-3. Rebuild the FPGA bitstream with the updated calibration values.
+Frequency is specified in units of 100μHz (0.0001 Hz).
 
-## Troubleshooting
-- If the waveform generator is not functioning as expected, verify the following:
-  - The FPGA is programmed with the correct bitstream.
-  - The DAC chip is properly connected and powered.
-  - The AXI4-Lite interface is correctly configured and accessed.
-  - The calibration values are accurate for your specific setup.
-- If you encounter any issues or have questions, please refer to the troubleshooting guide or contact our support team.
+| Desired Frequency | Register Value |
+| ----------------- | -------------- |
+| 1 Hz              | 10,000         |
+| 100 Hz            | 1,000,000      |
+| 1 kHz             | 10,000,000     |
+| 10 kHz            | 100,000,000    |
 
-## Conclusion
-The Waveform Generator is a versatile and configurable system for generating various waveforms. With its AXI4-Lite interface, look-up table-based sine wave generation, and voltage calibration, it provides an efficient and accurate solution for waveform generation applications.
+## Typical Usage Flow
 
-For more detailed information, please refer to the API reference documentation and the source code repository.
+1. **Reset**: Assert AXI reset, then deassert
+2. **Configure**: Write MODE, FREQ, AMPLTD, etc. (writes to shadow registers)
+3. **Apply**: Write to RECONFIG register (0x2C) to transfer shadow → active
+4. **Enable**: Write to RUN register (0x04) to enable channels
+5. **Trigger** (optional): Write to TRIGGER (0x34) for synchronized start
+6. **Update**: Modify shadow registers, write RECONFIG again for glitch-free update
+
+## Arbitrary Waveform Loading
+
+1. Write the number of samples to ARB_DEPTH (0x24)
+2. Write each sample to ARB_DATA (0x28 + sample_index × 4)
+3. Set MODE to ARB (5) and apply via RECONFIG
+4. Enable the channel
+
+Samples are 16-bit unsigned values (0 to 65535).
+
+## DAC Calibration
+
+The `voltsToDACWords` module maps the signed 16-bit waveform output to 12-bit DAC codes using per-channel calibration parameters:
+- `DAC_ZERO`: DAC code that produces 0V output
+- `DAC_TWOPOINTFIVE`: DAC code that produces 2.5V output
+
+These are set as Verilog parameters in `WaveGen.sv`.

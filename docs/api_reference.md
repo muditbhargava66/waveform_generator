@@ -1,172 +1,221 @@
-# Waveform Generator API Reference
+# API Reference — Waveform Generator
 
-## Introduction
-This document provides a reference for the API functions and data structures used to interact with the Waveform Generator IP core.
+## Linux Userspace Library (`wavegen_lib.h`)
 
-## IOCTL Commands
-The following IOCTL commands are available for configuring and controlling the Waveform Generator:
-
-| Command                      | Description                                        |
-|------------------------------|----------------------------------------------------|
-| `WAVEGEN_IOCTL_SET_MODE`     | Set the waveform mode for each channel             |
-| `WAVEGEN_IOCTL_SET_FREQUENCY`| Set the frequency for a specific channel           |
-| `WAVEGEN_IOCTL_SET_AMPLITUDE`| Set the amplitude for a specific channel           |
-| `WAVEGEN_IOCTL_SET_OFFSET`   | Set the DC offset for a specific channel           |
-| `WAVEGEN_IOCTL_SET_DUTY_CYCLE`| Set the duty cycle for a specific channel         |
-| `WAVEGEN_IOCTL_SET_PHASE_OFFSET`| Set the phase offset for a specific channel     |
-| `WAVEGEN_IOCTL_SET_CYCLES`   | Set the number of cycles for a specific channel    |
-| `WAVEGEN_IOCTL_ENABLE`       | Enable or disable waveform generation for each channel |
-| `WAVEGEN_IOCTL_SET_ARB_WAVEFORM_DEPTH` | Set the arbitrary waveform depth                   |
-| `WAVEGEN_IOCTL_SET_ARB_WAVEFORM_DATA`  | Set the arbitrary waveform data at a given offset  |
-
-## Data Structures
-The following data structures are used for configuring the Waveform Generator:
-
-### `struct wavegen_mode`
-```c
-struct wavegen_mode {
-    unsigned int channel_a;
-    unsigned int channel_b;
-};
-```
-- `channel_a`: Waveform mode for channel A (0-7)
-- `channel_b`: Waveform mode for channel B (0-7)
-
-### `struct wavegen_frequency`
-```c
-struct wavegen_frequency {
-    unsigned int channel;
-    unsigned int value;
-};
-```
-- `channel`: Channel to set the frequency for (0: Channel A, 1: Channel B)
-- `value`: Frequency value in units of 100 μHz
-
-### `struct wavegen_amplitude`
-```c
-struct wavegen_amplitude {
-    unsigned int channel;
-    unsigned int value;
-};
-```
-- `channel`: Channel to set the amplitude for (0: Channel A, 1: Channel B)
-- `value`: Amplitude value in units of 100 μV
-
-### `struct wavegen_offset`
-```c
-struct wavegen_offset {
-    unsigned int channel;
-    unsigned int value;
-};
-```
-- `channel`: Channel to set the DC offset for (0: Channel A, 1: Channel B)
-- `value`: DC offset value in units of 100 μV
-
-### `struct wavegen_duty_cycle`
-```c
-struct wavegen_duty_cycle {
-    unsigned int channel;
-    unsigned int value;
-};
-```
-- `channel`: Channel to set the duty cycle for (0: Channel A, 1: Channel B)
-- `value`: Duty cycle value in units of 100%/2^16
-
-### `struct wavegen_phase_offset`
-```c
-struct wavegen_phase_offset {
-    unsigned int channel;
-    unsigned int value;
-};
-```
-- `channel`: Channel to set the phase offset for (0: Channel A, 1: Channel B)
-- `value`: Phase offset value in units of 0.01 degrees (-180 to 180)
-
-### `struct wavegen_cycles`
-```c
-struct wavegen_cycles {
-    unsigned int channel;
-    unsigned int value;
-};
-```
-- `channel`: Channel to set the number of cycles for (0: Channel A, 1: Channel B)
-- `value`: Number of cycles (0 for continuous operation)
-
-### `struct wavegen_enable`
-```c
-struct wavegen_enable {
-    unsigned int channel_a;
-    unsigned int channel_b;
-};
-```
-- `channel_a`: Enable (1) or disable (0) waveform generation for channel A
-- `channel_b`: Enable (1) or disable (0) waveform generation for channel B
-
-### `struct wavegen_arb_waveform_depth`
-```c
-struct wavegen_arb_waveform_depth {
-    unsigned int depth;
-};
-```
-- `depth`: Depth of the arbitrary waveform
-
-### `struct wavegen_arb_waveform_data`
-```c
-struct wavegen_arb_waveform_data {
-    unsigned int offset;
-    unsigned int value;
-};
-```
-- `offset`: Offset of the arbitrary waveform data point
-- `value`: Value of the arbitrary waveform data poin
-
-## Waveform Modes
-The following waveform modes are available:
-
-| Mode Value | Waveform Type |
-|------------|---------------|
-| 0          | DC            |
-| 1          | Sine          |
-| 2          | Sawtooth      |
-| 3          | Triangle      |
-| 4          | Square        |
-| 5          | Arbitrary     |
-
-## Example Usage
-Here's an example of how to use the IOCTL commands to configure and control the Waveform Generator:
+### Initialization
 
 ```c
-#include <stdio.h>
-#include <fcntl.h>
-#include <sys/ioctl.h>
-#include "wavegen_ip.h"
+wavegen_error_t wavegen_init(void);
+```
+Opens `/dev/wavegen` device. Returns `WAVEGEN_OK` on success.
 
-int main() {
-    int fd = open("/dev/wavegen", O_RDWR);
-    if (fd < 0) {
-        perror("Failed to open wavegen device");
-        return 1;
-    }
+```c
+void wavegen_close(void);
+```
+Closes the device file descriptor.
 
-    struct wavegen_mode mode = {1, 2}; // Sine wave on channel A, Sawtooth wave on channel B
-    ioctl(fd, WAVEGEN_IOCTL_SET_MODE, &mode);
+### Parameter Configuration
 
-    struct wavegen_frequency freq = {WAVEGEN_CHANNEL_A, 10000}; // 1 kHz on channel A
-    ioctl(fd, WAVEGEN_IOCTL_SET_FREQUENCY, &freq);
+All parameter functions write to shadow registers. Call `wavegen_apply()` to commit changes.
 
-    struct wavegen_amplitude amp = {WAVEGEN_CHANNEL_A, 5000}; // 0.5 V amplitude on channel A
-    ioctl(fd, WAVEGEN_IOCTL_SET_AMPLITUDE, &amp);
+```c
+wavegen_error_t wavegen_set_mode(wavegen_channel_t channel, wavegen_mode_t mode);
+```
+Set waveform mode. Uses read-modify-write to preserve the other channel's mode.
 
-    struct wavegen_enable enable = {1, 0}; // Enable channel A, disable channel B
-    ioctl(fd, WAVEGEN_IOCTL_ENABLE, &enable);
+| Mode      | Constant                |
+| --------- | ----------------------- |
+| DC        | `WAVEGEN_MODE_DC`       |
+| Sine      | `WAVEGEN_MODE_SINE`     |
+| Sawtooth  | `WAVEGEN_MODE_SAWTOOTH` |
+| Triangle  | `WAVEGEN_MODE_TRIANGLE` |
+| Square    | `WAVEGEN_MODE_SQUARE`   |
+| Arbitrary | `WAVEGEN_MODE_ARB`      |
 
-    // ...
+```c
+wavegen_error_t wavegen_set_frequency(wavegen_channel_t channel, uint32_t frequency);
+```
+Set frequency in 100μHz units. Example: `10000000` = 1 kHz.
 
-    close(fd);
-    return 0;
-}
+```c
+wavegen_error_t wavegen_set_amplitude(wavegen_channel_t channel, uint16_t amplitude);
+```
+Set amplitude (0 to 32767). Full scale = 32767.
+
+```c
+wavegen_error_t wavegen_set_offset(wavegen_channel_t channel, int16_t offset);
+```
+Set DC offset (signed 16-bit).
+
+```c
+wavegen_error_t wavegen_set_duty_cycle(wavegen_channel_t channel, uint16_t duty_cycle);
+```
+Set duty cycle (0 to 65535). 32768 = 50%. Only affects square wave mode.
+
+```c
+wavegen_error_t wavegen_set_phase_offset(wavegen_channel_t channel, int16_t phase_offset);
+```
+Set phase offset in 0.01° units. Range: -18000 to +18000 (-180° to +180°).
+
+```c
+wavegen_error_t wavegen_set_cycles(wavegen_channel_t channel, uint16_t cycles);
+```
+Set number of output cycles. 0 = continuous.
+
+### Control
+
+```c
+wavegen_error_t wavegen_enable(wavegen_channel_t channel, int enable);
+```
+Enable (1) or disable (0) a channel. Takes effect immediately.
+
+```c
+wavegen_error_t wavegen_apply(void);
+```
+Atomically transfer all shadow register values to active registers.
+
+```c
+wavegen_error_t wavegen_trigger(wavegen_channel_t channel);
+```
+Software trigger for synchronized start.
+
+```c
+wavegen_error_t wavegen_start(wavegen_channel_t channel);
+```
+Convenience: enable + trigger.
+
+```c
+wavegen_error_t wavegen_stop(wavegen_channel_t channel);
+```
+Convenience: disable channel.
+
+```c
+wavegen_error_t wavegen_reset(wavegen_channel_t channel);
+```
+Soft reset: clears phase accumulator and cycle count.
+
+```c
+wavegen_error_t wavegen_get_status(wavegen_status_t *status);
+```
+Read current status (ready, reconfig_busy, channel running flags).
+
+### Batch Configuration
+
+```c
+wavegen_error_t wavegen_configure(wavegen_channel_t channel, const wavegen_config_t *config);
+```
+Configure all parameters at once and apply atomically.
+
+```c
+typedef struct {
+    wavegen_mode_t mode;
+    uint32_t frequency;
+    uint16_t amplitude;
+    int16_t  offset;
+    uint16_t duty_cycle;
+    int16_t  phase_offset;
+    uint16_t cycles;
+} wavegen_config_t;
 ```
 
-In this example, the `/dev/wavegen` device is opened, and IOCTL commands are used to set the waveform mode, frequency, amplitude, and enable/disable channels. The device is then closed after the configuration is complete.
+### Arbitrary Waveform
 
-For more detailed information on the Waveform Generator IP core and its integration, please refer to the integration guide.
+```c
+wavegen_error_t wavegen_set_arb_depth(uint32_t depth);
+wavegen_error_t wavegen_set_arb_sample(uint32_t index, uint16_t value);
+wavegen_error_t wavegen_load_arb_waveform(const uint16_t *data, uint32_t count);
+```
+
+### Preset Waveforms
+
+```c
+wavegen_error_t wavegen_preset_1khz_sine(wavegen_channel_t channel);
+wavegen_error_t wavegen_preset_1khz_square(wavegen_channel_t channel);
+wavegen_error_t wavegen_preset_1khz_triangle(wavegen_channel_t channel);
+wavegen_error_t wavegen_preset_1khz_sawtooth(wavegen_channel_t channel);
+```
+
+### Channel Constants
+
+| Constant          | Value | Description    |
+| ----------------- | ----- | -------------- |
+| `WAVEGEN_CH_A`    | 0     | Channel A only |
+| `WAVEGEN_CH_B`    | 1     | Channel B only |
+| `WAVEGEN_CH_BOTH` | 2     | Both channels  |
+
+### Error Codes
+
+| Code | Constant               | Description              |
+| ---- | ---------------------- | ------------------------ |
+| 0    | `WAVEGEN_OK`           | Success                  |
+| -1   | `WAVEGEN_ERR_INIT`     | Failed to open device    |
+| -2   | `WAVEGEN_ERR_NOT_INIT` | Library not initialized  |
+| -3   | `WAVEGEN_ERR_IOCTL`    | IOCTL call failed        |
+| -4   | `WAVEGEN_ERR_PARAM`    | Invalid parameter        |
+| -5   | `WAVEGEN_ERR_ALLOC`    | Memory allocation failed |
+
+---
+
+## Baremetal Library (`wavegen_lib_baremetal.h`)
+
+Header-only library for Xilinx Vitis standalone applications. All functions are `static inline`.
+
+### Initialization
+
+```c
+wavegen_hw_init(XPAR_WAVEGEN_0_BASEADDR);
+```
+
+### Configuration
+
+```c
+wavegen_hw_set_mode(WAVEGEN_HW_CH_A, WAVEGEN_HW_SINE);
+wavegen_hw_set_frequency(WAVEGEN_HW_CH_A, 10000000);  // 1 kHz
+wavegen_hw_set_amplitude(WAVEGEN_HW_CH_A, 32767);
+wavegen_hw_set_offset(WAVEGEN_HW_CH_A, 0);
+wavegen_hw_set_duty_cycle(WAVEGEN_HW_CH_A, 32768);
+wavegen_hw_set_phase_offset(WAVEGEN_HW_CH_A, 0);
+wavegen_hw_set_cycles(WAVEGEN_HW_CH_A, 0);
+```
+
+### Control
+
+```c
+wavegen_hw_enable(WAVEGEN_HW_CH_A, 1);
+wavegen_hw_reconfig();
+wavegen_hw_trigger(WAVEGEN_HW_CH_A);
+wavegen_hw_trigger_both();
+wavegen_hw_soft_reset(WAVEGEN_HW_CH_A);
+uint32_t status = wavegen_hw_get_status();
+```
+
+### One-Line Configure
+
+```c
+wavegen_hw_configure(WAVEGEN_HW_CH_A, WAVEGEN_HW_SINE,
+                     10000000, 32767, 0, 32768, 0, 0);
+```
+
+---
+
+## Kernel IOCTL Interface (`wavegen_ip.h`)
+
+For direct driver interaction (advanced use). See `wavegen_ip.h` for complete struct/ioctl definitions.
+
+| IOCTL                            | Direction | Description             |
+| -------------------------------- | --------- | ----------------------- |
+| `WAVEGEN_IOCTL_SET_MODE`         | W         | Set waveform modes      |
+| `WAVEGEN_IOCTL_SET_FREQUENCY`    | W         | Set frequency           |
+| `WAVEGEN_IOCTL_SET_AMPLITUDE`    | W         | Set amplitude           |
+| `WAVEGEN_IOCTL_SET_OFFSET`       | W         | Set DC offset           |
+| `WAVEGEN_IOCTL_SET_DUTY_CYCLE`   | W         | Set duty cycle          |
+| `WAVEGEN_IOCTL_SET_PHASE_OFFSET` | W         | Set phase offset        |
+| `WAVEGEN_IOCTL_SET_CYCLES`       | W         | Set cycle count         |
+| `WAVEGEN_IOCTL_ENABLE`           | W         | Enable/disable channels |
+| `WAVEGEN_IOCTL_SET_ARB_DEPTH`    | W         | Set arb waveform depth  |
+| `WAVEGEN_IOCTL_SET_ARB_DATA`     | W         | Write arb sample        |
+| `WAVEGEN_IOCTL_SET_ARB_BULK`     | W         | Bulk write arb samples  |
+| `WAVEGEN_IOCTL_TRIGGER`          | W         | Software trigger        |
+| `WAVEGEN_IOCTL_RECONFIG`         | -         | Apply shadow registers  |
+| `WAVEGEN_IOCTL_GET_STATUS`       | R         | Read status             |
+| `WAVEGEN_IOCTL_SOFT_RESET`       | W         | Per-channel soft reset  |

@@ -2,8 +2,9 @@
 
 module wavegen_v1_0 #(
     parameter integer C_S00_AXI_DATA_WIDTH = 32,
-    parameter integer C_S00_AXI_ADDR_WIDTH = 6,
-    parameter integer SAMPLING_FREQUENCY = 50000
+    parameter integer C_S00_AXI_ADDR_WIDTH = 14,
+    parameter integer SAMPLING_FREQUENCY = 50000,
+    parameter integer ARB_WAVEFORM_DEPTH = 1024
 )(
     // Users to add ports here
     input wire clk,
@@ -40,29 +41,30 @@ module wavegen_v1_0 #(
     // Instantiation of Axi Bus Interface S00_AXI
     wavegen_v1_0_S00_AXI #(
         .C_S_AXI_ADDR_WIDTH(C_S00_AXI_ADDR_WIDTH),
-        .SAMPLING_FREQUENCY(SAMPLING_FREQUENCY)
+        .SAMPLING_FREQUENCY(SAMPLING_FREQUENCY),
+        .ARB_WAVEFORM_DEPTH(ARB_WAVEFORM_DEPTH)
     ) wavegen_v1_0_S00_AXI_inst (
-        .S_AXI_ACLK(s00_axi_aclk),
-        .S_AXI_ARESETN(s00_axi_aresetn),
-        .S_AXI_AWADDR(s00_axi_awaddr),
-        .S_AXI_AWPROT(s00_axi_awprot),
-        .S_AXI_AWVALID(s00_axi_awvalid),
-        .S_AXI_AWREADY(s00_axi_awready),
-        .S_AXI_WDATA(s00_axi_wdata),
-        .S_AXI_WSTRB(s00_axi_wstrb),
-        .S_AXI_WVALID(s00_axi_wvalid),
-        .S_AXI_WREADY(s00_axi_wready),
-        .S_AXI_BRESP(s00_axi_bresp),
-        .S_AXI_BVALID(s00_axi_bvalid),
-        .S_AXI_BREADY(s00_axi_bready),
-        .S_AXI_ARADDR(s00_axi_araddr),
-        .S_AXI_ARPROT(s00_axi_arprot),
-        .S_AXI_ARVALID(s00_axi_arvalid),
-        .S_AXI_ARREADY(s00_axi_arready),
-        .S_AXI_RDATA(s00_axi_rdata),
-        .S_AXI_RRESP(s00_axi_rresp),
-        .S_AXI_RVALID(s00_axi_rvalid),
-        .S_AXI_RREADY(s00_axi_rready),
+        .s_axi_aclk(s00_axi_aclk),
+        .s_axi_aresetn(s00_axi_aresetn),
+        .s_axi_awaddr(s00_axi_awaddr),
+        .s_axi_awprot(s00_axi_awprot),
+        .s_axi_awvalid(s00_axi_awvalid),
+        .s_axi_awready(s00_axi_awready),
+        .s_axi_wdata(s00_axi_wdata),
+        .s_axi_wstrb(s00_axi_wstrb),
+        .s_axi_wvalid(s00_axi_wvalid),
+        .s_axi_wready(s00_axi_wready),
+        .s_axi_bresp(s00_axi_bresp),
+        .s_axi_bvalid(s00_axi_bvalid),
+        .s_axi_bready(s00_axi_bready),
+        .s_axi_araddr(s00_axi_araddr),
+        .s_axi_arprot(s00_axi_arprot),
+        .s_axi_arvalid(s00_axi_arvalid),
+        .s_axi_arready(s00_axi_arready),
+        .s_axi_rdata(s00_axi_rdata),
+        .s_axi_rresp(s00_axi_rresp),
+        .s_axi_rvalid(s00_axi_rvalid),
+        .s_axi_rready(s00_axi_rready),
         .sample_clk(en),
         .lut_clk(clk),
         .out_a(out_a),

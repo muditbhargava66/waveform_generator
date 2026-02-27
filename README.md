@@ -1,97 +1,120 @@
 # Waveform Generator
 
-The Waveform Generator is a digital system that generates various waveforms, including sine, sawtooth, triangle, square, and arbitrary waves. It is controlled through an AXI4-Lite interface and supports two output channels (A and B) with configurable parameters.
+A dual-channel, AXI4-Lite controlled waveform generator IP core for Xilinx Zynq-7000 SoC platforms. Generates DC, sine, sawtooth, triangle, square, and arbitrary waveforms with configurable parameters. Interfaces with external DACs via SPI.
 
 ## Features
-- Generates sine, sawtooth, triangle, square, and arbitrary waves
-- Two independent output channels (A and B)
-- Configurable waveform parameters:
-  - Mode (DC, Sine, Sawtooth, Triangle, Square, Arbitrary)
-  - Frequency
-  - Amplitude
-  - Offset
-  - Duty cycle (for square wave)
-  - Phase offset
-  - Number of cycles
-- AXI4-Lite interface for configuration and control
-- Look-up table (LUT) for efficient sine wave generation
-- Voltage-to-DAC word calibration for accurate output voltages
-- Arbitrary waveform generation with customizable depth and data
-- High-level software library for easier integration
+- **Dual independent channels** (A and B) with per-channel configuration
+- **6 waveform modes**: DC, Sine, Sawtooth, Triangle, Square, Arbitrary
+- **Configurable parameters**: frequency, amplitude, offset, duty cycle, phase offset, number of cycles
+- **AXI4-Lite register interface** with shadow registers for glitch-free atomic updates
+- **Software trigger** for synchronized dual-channel start
+- **Per-channel soft reset** and status readback
+- **Quarter-wave sine LUT** (512 entries, 16-bit, ~100 dB SNR)
+- **Arbitrary waveform** support with configurable depth (up to 4096 samples)
+- **Fixed-point arithmetic** — no runtime division, fully synthesizable
+- **Vivado 2023.2 verified** — all files pass `xvlog` and `xelab` with zero errors
+- **High-level libraries**: Linux userspace (`wavegen_lib`) and baremetal/Vitis (`wavegen_lib_baremetal`)
+- **Linux kernel driver** with IOCTL interface and safe user-space memory access
 
 ## Directory Structure
 ```
 waveform_generator/
 ├── hdl/
 │   ├── rtl/
+│   │   ├── WaveGen.sv                  # Top-level module (Zynq + DAC)
+│   │   ├── DivideByN.sv               # Parameterized clock divider
+│   │   ├── sin_LUT.v                   # Dual-port sine LUT (BRAM)
 │   │   ├── waveforms/
-│   │   │   ├── WaveForms.sv
-│   │   │   ├── SineWaves.sv
-│   │   │   └── s2ui.sv
+│   │   │   ├── WaveForms.sv            # Phase-accumulator waveform engine
+│   │   │   └── SineWaves.sv            # Quarter-wave sine synthesis
 │   │   ├── axi_lite/
-│   │   │   ├── wavegen_v1_0_S00_AXI.v
-│   │   │   └── wavegen_v1_0.v
-│   │   ├── dac/
-│   │   │   ├── Calibration.sv
-│   │   │   └── DAC_Controller.sv
-│   │   └── WaveGen.sv
+│   │   │   ├── wavegen_v1_0_S00_AXI.v  # AXI4-Lite slave (shadow regs)
+│   │   │   └── wavegen_v1_0.v          # AXI IP wrapper
+│   │   └── dac/
+│   │       ├── Calibration.sv          # Voltage-to-DAC calibration
+│   │       └── DAC_Controller.sv       # SPI DAC controller
 │   └── tb/
-│       └── wavegen_tb.sv
+│       └── wavegen_tb.sv              # Self-checking testbench
+├── ip/
+│   └── system_wrapper.v              # Zynq PS block design stub
+├── coe/
+│   ├── sin_LUT.hex                    # Hex LUT ($readmemh)
+│   └── sin_LUT.coe                    # Xilinx COE (Block RAM IP)
 ├── software/
 │   ├── driver/
-│   │   ├── wavegen_driver.c
-│   │   ├── wavegen_ip.c
-│   │   ├── wavegen_ip.h
-│   │   ├── wavegen_regs.h
+│   │   ├── wavegen_driver.c           # Linux kernel driver
+│   │   ├── wavegen_ip.c               # Register access functions
+│   │   ├── wavegen_ip.h               # IOCTL definitions
+│   │   ├── wavegen_regs.h             # Register map
 │   │   └── Makefile
 │   ├── scripts/
-│   │   └── coe.py
+│   │   └── coe.py                     # Sine LUT generator
 │   └── lib/
-│       ├── wavegen_lib.h
-│       └── wavegen_lib.c
-│── docs/
-│    ├── user_manual.md
-│    ├── api_reference.md
-│    ├── integration_guide.md
+│       ├── wavegen_lib.h              # Linux userspace library
+│       ├── wavegen_lib.c
+│       └── wavegen_lib_baremetal.h     # Baremetal/Vitis library
+├── docs/
+│   ├── user_manual.md
+│   ├── api_reference.md
+│   └── integration_guide.md
 └── README.md
 ```
 
-## Getting Started
-1. Clone the repository:
-   ```
-   git clone https://github.com/muditbhargava66/waveform_generator.git
-   ```
-2. Set up the hardware:
-   - Connect the FPGA board to your system
-   - Ensure the DAC is properly connected and powered
-3. Build the FPGA bitstream:
-   - Open the Vivado project in the `hdl` directory
-   - Generate the bitstream
-   - Program the FPGA with the generated bitstream
-4. Build and load the driver:
-   - Navigate to the `software/driver` directory
-   - Run `make` to build the driver
-   - Load the driver using `insmod wavegen_driver.ko`
-5. Use the high-level software library:
-   - Include the `wavegen_lib.h` header file in your application
-   - Link against the `wavegen_lib.c` file during compilation
-   - Use the provided functions to configure and control the Waveform Generator
+## Quick Start
+
+### 1. Generate the Sine LUT
+```bash
+cd software/scripts
+python coe.py --samples 512 --bits 16 --output-dir ../../coe --format both
+```
+
+### 2. Verify HDL with Vivado
+```bash
+# Syntax check
+xvlog --sv hdl/rtl/waveforms/*.sv hdl/rtl/dac/*.sv hdl/rtl/*.sv hdl/rtl/*.v hdl/rtl/axi_lite/*.v ip/*.v
+
+# Elaboration (testbench)
+xvlog --sv hdl/tb/wavegen_tb.sv
+xelab wavegen_tb -s wavegen_tb_sim --debug off
+xsim wavegen_tb_sim -R
+```
+
+### 3. Build for Hardware
+- Open Vivado, create a block design with Zynq PS
+- Add `wavegen_v1_0` as a custom AXI peripheral
+- Generate bitstream → program FPGA
+
+### 4. Software Integration
+
+**Baremetal (Vitis)**:
+```c
+#include "wavegen_lib_baremetal.h"
+wavegen_hw_init(XPAR_WAVEGEN_0_S00_AXI_BASEADDR);
+wavegen_hw_configure(WAVEGEN_HW_CH_A, WAVEGEN_HW_SINE,
+                     10000000, 32767, 0, 32768, 0, 0); // 1 kHz sine
+wavegen_hw_enable(WAVEGEN_HW_CH_A, 1);
+```
+
+**Linux**:
+```c
+#include "wavegen_lib.h"
+wavegen_init();
+wavegen_preset_1khz_sine(WAVEGEN_CH_A);
+wavegen_start(WAVEGEN_CH_A);
+```
 
 ## Documentation
-- [User Manual](docs/user_manual.md)
-- [API Reference](docs/api_reference.md)
-- [Integration Guide](docs/integration_guide.md)
+- [User Manual](docs/user_manual.md) — Register map, architecture, usage flow
+- [API Reference](docs/api_reference.md) — Library functions, IOCTLs, error codes
+- [Integration Guide](docs/integration_guide.md) — Vivado/Vitis setup, simulation, DAC pinout
 
-## Future Updates
+## Completed Tasks
 - [x] Improve the sine LUT generation script for better accuracy
 - [x] Add support for arbitrary waveform generation
-- [ ] Implement dynamic reconfiguration of waveform parameters
-- [ ] Enhance the driver with real-time waveform updates and triggers
+- [x] Implement dynamic reconfiguration of waveform parameters
+- [x] Enhance the driver with real-time waveform updates and triggers
 - [x] Develop a high-level software library for easier integration
-- [ ] Optimize the HDL code for resource utilization and performance
-
-## Contributing
-Contributions are welcome! If you find any issues or have suggestions for improvements, please open an issue or submit a pull request.
+- [x] Optimize the HDL code for resource utilization and performance
 
 ## License
 This project is licensed under the [MIT License](LICENSE).
